@@ -49,7 +49,7 @@ enum DLNA {
             }
             result.append(tv)
         }
-        log("TVs found: \(result.count)" + result.map { " · \($0.label) (\($0.ip))" }.joined())
+        log("TVs found: \(result.count)" + result.map { " · \($0.model ?? "unknown model") (\($0.ip))" }.joined())
         return (result.sorted { $0.samsung && !$1.samsung }, blocked && result.isEmpty)
     }
 
@@ -165,7 +165,9 @@ enum DLNA {
             break
         }
         guard control != nil else { return nil }
-        return TV(ip: host, name: text("//*[local-name()='friendlyName']") ?? host,
+        let name = text("//*[local-name()='friendlyName']")
+        name.map { Redact.hide($0, as: "<TV name>") }
+        return TV(ip: host, name: name ?? host,
                   model: text("//*[local-name()='modelName']"), controlURL: control)
     }
 
@@ -176,7 +178,9 @@ enum DLNA {
               let data = try? await Net.get(url, timeout: 2),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let dev = obj["device"] as? [String: Any] else { return nil }
-        return SamsungInfo(name: dev["name"] as? String, model: dev["modelName"] as? String)
+        let name = dev["name"] as? String
+        name.map { Redact.hide($0, as: "<TV name>") }
+        return SamsungInfo(name: name, model: dev["modelName"] as? String)
     }
 
     // MARK: SOAP

@@ -22,7 +22,7 @@ This is a personal project that has been tested on one setup:
 |---|---|---|
 | Samsung UE43MU6100 (2017, Tizen 3.0) | MacBook Air (Apple Silicon), macOS 26 | Mirror and second display work. Latency is ~1.0 s, 1080p60 is smooth, audio is in sync, and a 16-minute session ran with no rebuffering. |
 
-Other TVs with a DLNA/UPnP MediaRenderer should work at least as a plain stream, but nobody has tested them yet. The latency tricks depend on how the TV's player behaves. **If you try it on another TV, please open an issue** with the model and what happened, and include `~/Library/Logs/TVMirror.log`.
+Other TVs with a DLNA/UPnP MediaRenderer should work at least as a plain stream, but nobody has tested them yet. The latency tricks depend on how the TV's player behaves. **If you try it on another TV, please open an issue** with the model and what happened, and include `~/Library/Logs/TVMirror.log`. TV and computer names, your home folder and IP addresses are masked in it, so it is safe to share.
 
 Things to know:
 
@@ -86,6 +86,7 @@ ScreenCaptureKit ──► VideoToolbox H.264 ─┐
 - The stream address contains a random token that changes with every session (`/screen-<token>.ts`). It only works while streaming.
 - The server limits how many connections it accepts at once, drops clients that don't send a request within 5 seconds, and accepts only short `GET`/`HEAD` requests.
 - During discovery, a device description is accepted only if it comes over plain `http` from the same private IP address that answered SSDP. Its control URL must point to that same address, and redirects are refused.
+- The log masks TV and computer names, the account name, the home folder, the stream token and IP addresses (a home-network address keeps only its last number).
 - The stream itself is **not encrypted**: TV DLNA players don't support HTTPS. Someone who can capture traffic on your Wi-Fi could still record it, so don't stream sensitive content on networks you don't trust.
 
 ## Command line

@@ -86,8 +86,9 @@ enum Headless {
                     monitor = m
                 } catch { log("TV: \(error.localizedDescription)") }
             } else {
-                // no TV — only this Mac may read the stream (ffprobe, VLC)
-                log("stream for local testing: http://127.0.0.1:\(server.port)\(server.streamPath)")
+                // no TV — only this Mac may read the stream (ffprobe, VLC). Printed straight to the terminal:
+                // the log masks the token.
+                print("stream for local testing: http://127.0.0.1:\(server.port)\(server.streamPath)")
             }
             if let d = Double(value("--duration") ?? "") {
                 try? await Task.sleep(nanoseconds: UInt64(d * 1e9))

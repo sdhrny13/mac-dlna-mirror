@@ -368,6 +368,10 @@ struct ContentView: View {
                 Section {
                     DisclosureGroup(tr("Log", "Журнал"), isExpanded: $showLog) {
                         LogView()
+                        Text(tr("TV and computer names, your home folder and network addresses are masked in the log, so it is safe to attach to a bug report.",
+                                "Названия ТВ и компьютера, домашняя папка и сетевые адреса в журнале скрыты — его можно приложить к сообщению об ошибке."))
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                         HStack {
                             Button(tr("Copy log", "Скопировать журнал")) {
                                 NSPasteboard.general.clearContents()

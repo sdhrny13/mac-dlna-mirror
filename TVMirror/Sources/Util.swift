@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import QuartzCore
+import SystemConfiguration
 
 /// Monotonic clock in seconds. Same base as ScreenCaptureKit PTS (host time).
 func now() -> Double { CACurrentMediaTime() }
@@ -30,6 +31,7 @@ final class Log {
     }
 
     func write(_ msg: String) {
+        let msg = Redact.line(msg)
         lock.lock()
         let line = "\(df.string(from: Date())) \(msg)"
         buffer.append(line)
@@ -49,6 +51,72 @@ final class Log {
 }
 
 func log(_ msg: String) { Log.shared.write(msg) }
+
+/// Masks what could identify the user before a line reaches the log, so the log can be shared in a bug report:
+/// IP addresses (a home-network address keeps only its last number — enough to tell the TV from the Mac),
+/// the stream token, the home folder, the account and computer names, and TV names seen during discovery.
+enum Redact {
+    private static let lock = NSLock()
+    private static var hidden: [(String, String)] = []
+
+    /// Text that must never reach the log as is, e.g. the name a user gave their TV.
+    static func hide(_ text: String, as placeholder: String) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard t.count >= 3 else { return }
+        lock.lock(); defer { lock.unlock() }
+        if !hidden.contains(where: { $0.0 == t }) { hidden.append((t, placeholder)) }
+    }
+
+    /// The user's own identifiers, known up front.
+    private static let personal: [(String, String)] = {
+        var list = [(NSHomeDirectory(), "~"), (NSFullUserName(), "<user>")]
+        if let name = SCDynamicStoreCopyComputerName(nil, nil) as String? { list.append((name, "<Mac name>")) }
+        if let name = SCDynamicStoreCopyLocalHostName(nil) as String? { list.append((name, "<Mac name>")) }
+        return list.filter { $0.0.count >= 3 }
+    }()
+    private static let userName: NSRegularExpression? = {
+        let u = NSUserName()
+        guard u.count >= 3 else { return nil }
+        return try? NSRegularExpression(pattern: "(?<![A-Za-z0-9])" + NSRegularExpression.escapedPattern(for: u) + "(?![A-Za-z0-9])",
+                                        options: [.caseInsensitive])
+    }()
+    private static let ipv4 = try! NSRegularExpression(pattern: #"(?<![0-9.])([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})(?![0-9.])"#)
+    private static let token = try! NSRegularExpression(pattern: #"/screen-[0-9a-f]{32}\.ts"#)
+
+    static func line(_ msg: String) -> String {
+        var s = msg
+        lock.lock(); let extra = hidden; lock.unlock()
+        // longest first, so the home folder goes before the user name inside it
+        for (text, placeholder) in (personal + extra).sorted(by: { $0.0.count > $1.0.count }) {
+            s = s.replacingOccurrences(of: text, with: placeholder, options: .caseInsensitive)
+        }
+        if let userName { s = replace(userName, in: s) { _ in "<user>" } }
+        s = replace(token, in: s) { _ in "/screen-<token>.ts" }
+        s = replace(ipv4, in: s) { parts in
+            let o = parts.compactMap { Int($0) }
+            guard o.count == 4, o.allSatisfy({ $0 <= 255 }) else { return parts.joined(separator: ".") }
+            if o[0] == 127 || o == [0, 0, 0, 0] { return parts.joined(separator: ".") }
+            return isPrivateIPv4(parts.joined(separator: ".")) ? "x.x.x.\(o[3])" : "<non-LAN IP>"
+        }
+        return s
+    }
+
+    /// Replaces every match; `with` gets the capture groups (or the whole match when there are none).
+    private static func replace(_ re: NSRegularExpression, in s: String, with: ([String]) -> String) -> String {
+        let ns = s as NSString
+        var out = ""
+        var last = 0
+        for m in re.matches(in: s, range: NSRange(location: 0, length: ns.length)) {
+            out += ns.substring(with: NSRange(location: last, length: m.range.location - last))
+            let groups = m.numberOfRanges > 1
+                ? (1..<m.numberOfRanges).map { ns.substring(with: m.range(at: $0)) }
+                : [ns.substring(with: m.range)]
+            out += with(groups)
+            last = m.range.location + m.range.length
+        }
+        return out + ns.substring(from: last)
+    }
+}
 
 // MARK: - Big-endian byte writer
 

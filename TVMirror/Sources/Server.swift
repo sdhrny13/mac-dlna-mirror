@@ -314,7 +314,8 @@ final class StreamServer {
         clients[cl.id] = cl
         lock.unlock()
         cl.send(Data(hdr.utf8))
-        log("DLNA player \(remote) connected to the stream: \(headers["user-agent"] ?? "?"), range \(headers["range"] ?? "-"), " +
+        // no User-Agent here: Samsung players put the TV's user-given name in it
+        log("DLNA player \(remote) connected to the stream: range \(headers["range"] ?? "-"), " +
             "getcontentFeatures \(headers["getcontentfeatures.dlna.org"] ?? "-")")
         DispatchQueue.main.async { self.onEvent?("ts-open", remote) }
         engine?.requestKeyframe()
