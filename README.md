@@ -26,17 +26,34 @@ Other TVs with a DLNA/UPnP MediaRenderer should work at least as a plain stream,
 
 Things to know:
 
-- The app is ad-hoc signed and there's no prebuilt download yet, so you build it yourself, which takes about a minute.
+- The app isn't notarized by Apple (that needs a paid developer account), so macOS asks you to confirm the first launch. The steps are below.
 - Second-display mode uses Apple's private `CGVirtualDisplay` API, which tools like DeskPad and BetterDisplay also use. A future macOS update could break it.
-- The build targets Apple Silicon (arm64). Intel Macs might work if you change `-target` in `build.sh`, but that hasn't been tested.
+- The download is a universal app for Apple Silicon and Intel. It has been tested on Apple Silicon; the Intel version has only been run under Rosetta, not on a real Intel Mac.
 
 ## Requirements
 
 - macOS 14 Sonoma or later
-- Command Line Tools (run `xcode-select --install`). The full Xcode isn't needed.
 - A TV with DLNA/UPnP on the same local network as the Mac
 
-## Build and run
+## Install
+
+### Download
+
+1. Download **TVMirror-2.0.dmg** from [Releases](https://github.com/sdhrny13/mac-dlna-mirror/releases/latest).
+2. Open it and drag **TVMirror** into **Applications**.
+3. Open TVMirror from Applications. The first time, macOS says it can't verify the app. Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to TVMirror. This is needed only once.
+
+If you prefer Terminal, this one command does the same as step 3:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/TVMirror.app
+```
+
+To check the download, put the `.sha256` file from the release next to the image and run `shasum -a 256 -c TVMirror-2.0.dmg.sha256`.
+
+### Build from source
+
+You need the Command Line Tools (`xcode-select --install`); the full Xcode isn't needed. The build takes about a minute.
 
 ```bash
 git clone https://github.com/sdhrny13/mac-dlna-mirror.git
@@ -45,7 +62,11 @@ TVMirror/build.sh
 open TVMirror/build/TVMirror.app
 ```
 
-On first launch, macOS asks for two permissions:
+`TVMirror/release.sh` builds the universal app and the downloadable `TVMirror-<version>.dmg` into `TVMirror/build/release/`.
+
+## First launch
+
+macOS asks for two permissions:
 
 1. **Local Network**, so the app can find the TV. If you miss the prompt, go to System Settings → Privacy & Security → Local Network → TVMirror.
 2. **Screen & System Audio Recording**, under System Settings → Privacy & Security. Restart the app after you grant it.
